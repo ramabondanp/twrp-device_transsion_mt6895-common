@@ -1,11 +1,11 @@
-# 1 "vendor/mediatek/proprietary/hardware/fstab/mt6789/fstab.in.mt6789"
+# 1 "vendor/mediatek/proprietary/hardware/fstab/mt6895/fstab.in.mt6895"
 # 1 "<built-in>" 1
 # 1 "<built-in>" 3
 # 341 "<built-in>" 3
 # 1 "<command line>" 1
 # 1 "<built-in>" 2
-# 1 "vendor/mediatek/proprietary/hardware/fstab/mt6789/fstab.in.mt6789" 2
-# 172 "vendor/mediatek/proprietary/hardware/fstab/mt6789/fstab.in.mt6789"
+# 1 "vendor/mediatek/proprietary/hardware/fstab/mt6895/fstab.in.mt6895" 2
+# 172 "vendor/mediatek/proprietary/hardware/fstab/mt6895/fstab.in.mt6895"
 system /system erofs ro wait,slotselect,avb=vbmeta_system,logical,first_stage_mount,avb_keys=/avb/q-gsi.avbpubkey:/avb/r-gsi.avbpubkey:/avb/s-gsi.avbpubkey
 
 

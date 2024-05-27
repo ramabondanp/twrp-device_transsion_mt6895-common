@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-COMMON_PATH := device/transsion/mt6789-common
+COMMON_PATH := device/transsion/mt6895-common
 
 TARGET_RECOVERY_DEVICE_DIRS := \
     $(COMMON_PATH) \
@@ -31,7 +31,7 @@ ENABLE_CPUSETS := true
 ENABLE_SCHEDBOOST := true
 
 # Bootloader
-TARGET_BOOTLOADER_BOARD_NAME := mt6789
+TARGET_BOOTLOADER_BOARD_NAME := mt6895
 TARGET_NO_BOOTLOADER := true
 
 # Build hacks
@@ -101,7 +101,7 @@ TARGET_COPY_OUT_VENDOR := vendor
 TARGET_COPY_OUT_VENDOR_DLKM := vendor_dlkm
 
 # Platform
-TARGET_BOARD_PLATFORM := mt6789
+TARGET_BOARD_PLATFORM := mt6895
 
 # VNDK
 BOARD_VNDK_VERSION := current

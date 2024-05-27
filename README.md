@@ -1,1 +1,1 @@
-# Common TWRP device tree for Transsion mt6789 devices
+# Common TWRP device tree for Transsion mt6895 devices
