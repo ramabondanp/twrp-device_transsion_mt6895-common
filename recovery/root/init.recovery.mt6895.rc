@@ -13,8 +13,8 @@ on fs && property:ro.debuggable=0
 
 on fs
     install_keyring
-    wait /dev/block/platform/soc/11270000.ufshci
-    symlink /dev/block/platform/soc/11270000.ufshci /dev/block/bootdevice
+    wait /dev/block/platform/soc/112b0000.ufshci
+    symlink /dev/block/platform/soc/112b0000.ufshci /dev/block/bootdevice
 
 # We need vold early for metadata encryption
 on early-fs
