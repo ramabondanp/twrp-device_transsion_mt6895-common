@@ -103,6 +103,14 @@ BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_USES_GENERIC_KERNEL_IMAGE := true
 BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := false
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
+
+# Empty RECOVERY fragment: the bootloader only enters recovery mode when
+# vendor_boot contains a RECOVERY-type ramdisk entry. All recovery files
+# are in the platform ramdisk above.
+BOARD_VENDOR_RAMDISK_FRAGMENTS := emptyrecovery
+BOARD_VENDOR_RAMDISK_FRAGMENT.emptyrecovery.MKBOOTIMG_ARGS := --ramdisk_type RECOVERY
+BOARD_VENDOR_RAMDISK_FRAGMENT.emptyrecovery.PREBUILT := $(COMMON_PATH)/prebuilt/empty_recovery.cpio.zst
+
 TARGET_NO_RECOVERY := true
 TARGET_RECOVERY_FSTAB := $(COMMON_PATH)/recovery/root/system/etc/recovery.fstab
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
