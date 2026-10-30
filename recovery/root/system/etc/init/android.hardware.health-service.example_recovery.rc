@@ -1,0 +1,7 @@
+service vendor.health-default /system/bin/hw/android.hardware.health-service.example_recovery
+    class hal
+    user root
+    group root
+    capabilities WAKE_ALARM BLOCK_SUSPEND
+    file /dev/kmsg w
+    seclabel u:r:recovery:s0

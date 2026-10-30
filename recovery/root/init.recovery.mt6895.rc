@@ -17,9 +17,6 @@ on fs
 on boot
     setprop sys.usb.config adb
 
-on post-fs-data
-    start health-hal-2-1
-
 on boot
     start mtk.plpath.utils.link
 
