@@ -1,0 +1,16 @@
+<!--
+    Device manifest fragment for the Trustonic TEE AIDL services.
+    Recovery's servicemanager only reads /system/etc/vintf/manifest.xml and
+    /system/etc/vintf/manifest/*.xml, so the vendor manifest entries must also
+    be present here for AServiceManager_addService() to accept the services.
+-->
+<manifest version="1.0" type="device">
+    <hal format="aidl">
+        <name>vendor.trustonic.tee</name>
+        <fqname>ITee/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>vendor.trustonic.tui</name>
+        <fqname>ITui/default</fqname>
+    </hal>
+</manifest>
