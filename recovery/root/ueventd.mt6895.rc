@@ -204,3 +204,11 @@
 #elliptic sensor
 /dev/elliptic0            0644   system     system
 /dev/elliptic1            0644   system     system
+
+# Trustonic TEE driver
+/dev/mobicore             0600   system     system
+/dev/mobicore-user        0666   system     system
+/dev/t-base-tui           0666   system     system
+
+# teeperf driver
+/dev/teeperf              0666   system     system

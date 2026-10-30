@@ -58,6 +58,16 @@ service mtk.plpath.utils.link /system/bin/mtk_plpath_utils
     disabled
     seclabel u:r:recovery:s0
 
+service tee-service /vendor/bin/hw/vendor.trustonic.tee-service
+    interface aidl aidl/vendor.trustonic.teeservice.ITeeService
+    interface aidl aidl/vendor.trustonic.tee.ITee/default
+    interface aidl aidl/vendor.trustonic.tui.ITui/default
+    class hal
+    user system
+    group system
+    disabled
+    seclabel u:r:recovery:s0
+
 service vendor.gatekeeper-default /vendor/bin/hw/android.hardware.gatekeeper-service.trustonic
     class early_hal
     user system
@@ -74,6 +84,7 @@ on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=tru
     start mobicore
 
 on property:ro.vendor.trustonic.ready=true
+    start tee-service
     start vendor.gatekeeper-default
     start vendor.keymint-trustonic
 

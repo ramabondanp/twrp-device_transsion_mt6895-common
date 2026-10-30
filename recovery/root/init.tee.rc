@@ -61,6 +61,9 @@ on post-fs
     chmod 0777 /tranfs/startPara
     #BSP: Create startPara for anti-crack by xiaolin.wu 20231225 end
 
+    # Start the TEE daemon before keystore2 initializes on late-init.
+    start mobicore
+
 on post-fs-data
     # Create /data/vendor/key_provisioning dir and get proper encryption policy installed
     # Key Installation
