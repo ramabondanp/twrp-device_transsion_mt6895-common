@@ -1,0 +1,46 @@
+diff --git a/core/Makefile b/core/Makefile
+index a997efa..dbc9b6f 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1090,6 +1090,10 @@ ifeq ($(BOARD_RAMDISK_USE_LZ4),true)
+ COMPRESSION_COMMAND_DEPS := $(LZ4)
+ COMPRESSION_COMMAND := $(LZ4) -l -12 --favor-decSpeed
+ RAMDISK_EXT := .lz4
++else ifeq ($(BOARD_RAMDISK_USE_ZSTD),true)
++COMPRESSION_COMMAND_DEPS := $(ZSTD)
++COMPRESSION_COMMAND := $(ZSTD) -T0 -19 --check
++RAMDISK_EXT := .zst
+ else ifeq ($(BOARD_RAMDISK_USE_XZ),true)
+ COMPRESSION_COMMAND_DEPS := $(XZ)
+ COMPRESSION_COMMAND := $(XZ) -f -c --check=crc32 --lzma2=dict=32MiB
+@@ -2672,7 +2676,8 @@ endif
+ 
+ ifeq (,$(filter true, $(BOARD_USES_FULL_RECOVERY_IMAGE) $(BOARD_USES_RECOVERY_AS_BOOT) \
+   $(BOARD_INCLUDE_RECOVERY_DTBO) $(BOARD_INCLUDE_RECOVERY_ACPIO) \
+-  $(BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT) $(BOARD_RAMDISK_USE_LZ4) $(BOARD_RAMDISK_USE_XZ)))
++  $(BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT) $(BOARD_RAMDISK_USE_LZ4) $(BOARD_RAMDISK_USE_XZ) \
++  $(BOARD_RAMDISK_USE_ZSTD)))
+ # Named '.dat' so we don't attempt to use imgdiff for patching it.
+ RECOVERY_RESOURCE_ZIP := $(TARGET_OUT_VENDOR)/etc/recovery-resource.dat
+ ALL_DEFAULT_INSTALLED_MODULES += $(RECOVERY_RESOURCE_ZIP)
+@@ -3639,7 +3644,7 @@ ifneq ($(INSTALLED_BOOTIMAGE_TARGET),)
+ ifneq ($(INSTALLED_RECOVERYIMAGE_TARGET),)
+ ifneq ($(BOARD_USES_FULL_RECOVERY_IMAGE),true)
+ ifneq (,$(filter true,$(BOARD_INCLUDE_RECOVERY_DTBO) $(BOARD_INCLUDE_RECOVERY_ACPIO) \
+-      $(BOARD_RAMDISK_USE_LZ4))) $(BOARD_RAMDISK_USE_XZ)))
++      $(BOARD_RAMDISK_USE_LZ4) $(BOARD_RAMDISK_USE_XZ) $(BOARD_RAMDISK_USE_ZSTD)))
+ diff_tool := $(HOST_OUT_EXECUTABLES)/bsdiff
+ else
+ diff_tool := $(HOST_OUT_EXECUTABLES)/imgdiff
+diff --git a/core/config.mk b/core/config.mk
+index 688ca8c..271a160 100644
+--- a/core/config.mk
++++ b/core/config.mk
+@@ -703,6 +703,7 @@ MKBOOTFS := $(HOST_OUT_EXECUTABLES)/mkbootfs$(HOST_EXECUTABLE_SUFFIX)
+ MINIGZIP := $(GZIP)
+ LZ4 := $(HOST_OUT_EXECUTABLES)/lz4$(HOST_EXECUTABLE_SUFFIX)
+ LZMA := prebuilts/tools-lineage/linux-x86/bin/lzma
++ZSTD := $(HOST_OUT_EXECUTABLES)/zstd$(HOST_EXECUTABLE_SUFFIX)
+ ifeq (,$(strip $(BOARD_CUSTOM_MKBOOTIMG)))
+ MKBOOTIMG := $(HOST_OUT_EXECUTABLES)/mkbootimg$(HOST_EXECUTABLE_SUFFIX)
+ else

@@ -34,9 +34,7 @@ BOARD_KERNEL_SEPARATED_DTBO := true
 
 # Kernel
 TARGET_NO_KERNEL := true
-# gzip: lz4 does not fit the 64 MiB vendor_boot partition with the full
-# recovery root in the platform ramdisk, and zstd needs build/make changes.
-BOARD_RAMDISK_USE_LZ4 := false
+BOARD_RAMDISK_USE_ZSTD := true
 TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilt/dtb.img
 
 BOARD_BOOT_HEADER_VERSION := 4
@@ -102,7 +100,7 @@ TARGET_SYSTEM_PROP += $(COMMON_PATH)/system.prop
 # Recovery
 BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_USES_GENERIC_KERNEL_IMAGE := true
-BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := false
+BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
 TARGET_NO_RECOVERY := true
 TARGET_RECOVERY_FSTAB := $(COMMON_PATH)/recovery/root/system/etc/recovery.fstab
