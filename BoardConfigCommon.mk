@@ -133,7 +133,10 @@ BOOT_SECURITY_PATCH := $(PLATFORM_SECURITY_PATCH)
 # Tools
 TW_INCLUDE_FB2PNG := true
 TW_INCLUDE_NTFS_3G := true
-TW_INCLUDE_REPACKTOOLS := true
+# The bundled repacker expects recovery.cpio, not our zstd PLATFORM payload
+# plus an empty RECOVERY fragment. Keep all repack entry points unavailable.
+TW_INCLUDE_REPACKTOOLS := false
+TW_NO_FLASH_CURRENT_TWRP := true
 TW_INCLUDE_RESETPROP := true
 TW_INCLUDE_LPTOOLS := true
 
