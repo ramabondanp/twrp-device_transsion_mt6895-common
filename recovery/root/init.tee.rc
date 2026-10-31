@@ -10,6 +10,7 @@ service mobicore /vendor/bin/mcDriverDaemon --P1 /mnt/vendor/persist/mcRegistry 
     priority -20
     user root
     group root
+    disabled
     seclabel u:r:recovery:s0
 
 # t-Drv naming
@@ -61,7 +62,9 @@ on post-fs
     chmod 0777 /tranfs/startPara
     #BSP: Create startPara for anti-crack by xiaolin.wu 20231225 end
 
-    # Start the TEE daemon before keystore2 initializes on late-init.
+# TWRP must release temporary /vendor mounts before any TEE process
+# opens the ramdisk binaries, libraries, or registry files below it.
+on property:twrp.storage.ready=1
     start mobicore
 
 on post-fs-data
@@ -86,5 +89,3 @@ on property:vold.decrypt=trigger_restart_framework
     write /proc/bootprof "MOBICORE: create /data/vendor/mcRegistry ++ (FDE encrypted)"
     mkdir /data/vendor/mcRegistry 0775 system system
     write /proc/bootprof "MOBICORE: create /data/vendor/mcRegistry -- (FDE encrypted)"
-
-
