@@ -59,6 +59,9 @@ PRODUCT_PROPERTY_OVERRIDES += ro.twrp.vendor_boot=true
 
 # Dynamic Partitions
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
+# Recovery uses the device's existing metadata, not generated super images.
+PRODUCT_BUILD_SUPER_PARTITION := false
+PRODUCT_BUILD_SUPER_EMPTY_IMAGE := false
 
 # API
 PRODUCT_SHIPPING_API_LEVEL := 31
