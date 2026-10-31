@@ -1,25 +1,17 @@
 #include <fcntl.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <chrono>
-#include <ctime>
-#include <iostream>
-#include <map>
-#include <thread>
+#include <cstring>
+#include <memory>
+#include <string>
 
 #include <android-base/file.h>
-#include <android-base/strings.h>
-#include <android-base/unique_fd.h>
 #include <libdm/dm.h>
 #include <log/log.h>
 
-using namespace std::literals::string_literals;
 using namespace android::dm;
 
 #define NAME_PL_A "pl_a"
@@ -27,14 +19,12 @@ using namespace android::dm;
 
 #define UFS_PL_A "/dev/block/sda"
 #define UFS_PL_B "/dev/block/sdb"
-#define UFS_DEV "/sys/class/block/sda/uevent"
 #define LINK_PL_A "/dev/block/by-name/preloader_raw_a"
 #define LINK_PL_B "/dev/block/by-name/preloader_raw_b"
 #define LINK1_PL_A "/dev/block/bootdevice/by-name/preloader_raw_a"
 #define LINK1_PL_B "/dev/block/bootdevice/by-name/preloader_raw_b"
 #define DM_BLK_SIZE (512)
 
-#define PLHEAD "MMM"
 #define UFSHEAD "UFS"
 #define EMMCHEAD "EMMC"
 #define COMBOHEAD "COMB"
@@ -87,11 +77,10 @@ int create_pl_path(void) {
   int start_blk, blk_cnt, fd;
   off_t pl_size;
   char header_desc[5];
-  std::string path_a, path_b, link_path, dev_path, link;
+  std::string path_a, path_b;
   DeviceMapper& dm = DeviceMapper::Instance();
   ssize_t sz = 0;
 
-  
   fd = open(UFS_PL_A, O_RDONLY);
   if (fd < 0) {
     ALOGE("Cannot open %s (%s)", UFS_PL_A, strerror(errno));
@@ -143,7 +132,6 @@ int create_pl_path(void) {
     return 1;
   }
   blk_cnt -= start_blk;
-  
   if (create_dm(UFS_PL_A, NAME_PL_A, &path_a, start_blk, blk_cnt) != 0) {
     return 1;
   }
@@ -152,8 +140,6 @@ int create_pl_path(void) {
       ALOGE("Cannot delete device %s (%s)", NAME_PL_A, strerror(errno));
     return 1;
   }
-  
-
   create_pl_link(LINK_PL_A, path_a);
   create_pl_link(LINK_PL_B, path_b);
   create_pl_link(LINK1_PL_A, path_a);
