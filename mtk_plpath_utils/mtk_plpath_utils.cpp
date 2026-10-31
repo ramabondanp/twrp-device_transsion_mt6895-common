@@ -30,8 +30,8 @@ using namespace android::dm;
 #define UFS_DEV "/sys/class/block/sda/uevent"
 #define LINK_PL_A "/dev/block/by-name/preloader_raw_a"
 #define LINK_PL_B "/dev/block/by-name/preloader_raw_b"
-#define LINK1_PL_A "/dev/block/platform/bootdevice/by-name/preloader_raw_a"
-#define LINK1_PL_B "/dev/block/platform/bootdevice/by-name/preloader_raw_b"
+#define LINK1_PL_A "/dev/block/bootdevice/by-name/preloader_raw_a"
+#define LINK1_PL_B "/dev/block/bootdevice/by-name/preloader_raw_b"
 #define DM_BLK_SIZE (512)
 
 #define PLHEAD "MMM"
@@ -70,10 +70,13 @@ static int create_dm(const char* device, const char* name, std::string* path, in
 static void create_pl_link(std::string link, std::string devpath) {
   std::string link_path;
 
-  if (android::base::Readlink(link, &link_path) && link_path != devpath) {
+  if (android::base::Readlink(link, &link_path)) {
+    if (link_path == devpath) return;
     ALOGE("Remove symlink %s links to: %s", link.c_str(), link_path.c_str());
-    if (!android::base::RemoveFileIfExists(link))
+    if (!android::base::RemoveFileIfExists(link)) {
       ALOGE("Cannot remove symlink %s", strerror(errno));
+      return;
+    }
   }
 
   if (symlink(devpath.c_str(), link.c_str()))
@@ -116,7 +119,11 @@ int create_pl_path(void) {
     close(fd);
     return 1;
   }
-  if (sz != sizeof(header_desc)) ALOGE("%s size is not header_desc\n", __func__);
+  if (sz != sizeof(header_desc)) {
+    ALOGE("%s size is not header_desc\n", __func__);
+    close(fd);
+    return 1;
+  }
 
   close(fd);
 
@@ -131,13 +138,17 @@ int create_pl_path(void) {
     return 1;
   }
 
+  if (blk_cnt <= start_blk) {
+    ALOGE("Preloader device is smaller than its header");
+    return 1;
+  }
   blk_cnt -= start_blk;
   
   if (create_dm(UFS_PL_A, NAME_PL_A, &path_a, start_blk, blk_cnt) != 0) {
     return 1;
   }
   if (create_dm(UFS_PL_B, NAME_PL_B, &path_b, start_blk, blk_cnt) != 0) {
-    if (dm.DeleteDevice(UFS_PL_A))
+    if (!dm.DeleteDevice(NAME_PL_A))
       ALOGE("Cannot delete device %s (%s)", NAME_PL_A, strerror(errno));
     return 1;
   }
