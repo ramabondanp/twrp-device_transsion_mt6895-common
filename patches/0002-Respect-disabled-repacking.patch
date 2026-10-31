@@ -1,0 +1,27 @@
+diff --git a/Android.bp b/Android.bp
+--- a/Android.bp
++++ b/Android.bp
+@@ -719,11 +719,17 @@
+-    }) + select(soong_config_variable("twrpGlobalVars", "move_recovery_res_to_vendor_boot"), {
+-        true: [
++    }) + select((
++        soong_config_variable("twrpGlobalVars", "move_recovery_res_to_vendor_boot"),
++        soong_config_variable("twrpGlobalVars", "no_flash_current_twrp"),
++    ), {
++        (true, false): [
+             "magiskboot",
+         ],
+-        default: [],
++        (default, default): [],
+-    }) + select(soong_config_variable("ANDROID", "BOARD_USES_RECOVERY_AS_BOOT"), {
+-        true: [
++    }) + select((
++        soong_config_variable("ANDROID", "BOARD_USES_RECOVERY_AS_BOOT"),
++        soong_config_variable("twrpGlobalVars", "no_flash_current_twrp"),
++    ), {
++        (true, false): [
+             "magiskboot",
+         ],
+-        default: [],
++        (default, default): [],
+     }) + select(soong_config_variable("twrpGlobalVars", "include_repacktools"), {
