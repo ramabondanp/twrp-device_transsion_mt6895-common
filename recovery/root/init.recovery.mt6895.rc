@@ -74,12 +74,11 @@ service vendor.keymint-trustonic /vendor/bin/hw/android.hardware.security.keymin
     class early_hal
     user system
     group system
+    disabled
     seclabel u:r:recovery:s0
 
-on property:ro.crypto.state=encrypted && property:ro.boot.dynamic_partitions=true
-    start mobicore
-
-on property:ro.vendor.trustonic.ready=true
+# Start consumers only after both mount cleanup and TEE initialization.
+on property:twrp.storage.ready=1 && property:ro.vendor.trustonic.ready=true
     start tee-service
     start vendor.gatekeeper-default
     start vendor.keymint-trustonic
