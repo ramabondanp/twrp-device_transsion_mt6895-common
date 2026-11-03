@@ -34,3 +34,7 @@ tr_system			/tr_system		auto		ro																	wait,slotselect,logical,nofail
 
 # Use tranfs as cache
 /dev/block/by-name/tranfs	/cache			ext4		noatime,nosuid,nodev,discard														wait,check,formattable
+
+# USB OTG host. Keep the xHCI sysfs path so TWRP's Coldboot/uevent handler
+# marks the partition present at boot and when the drive is plugged in later.
+/devices/platform/soc/11201000.usb0/11200000.xhci*	/usbotg	auto	nosuid,nodev	wait,voldmanaged=usbotg:auto

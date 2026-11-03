@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Rama Bondan Prakoso <ramanarubp@gmail.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0700
+Subject: [PATCH] Refresh removable sysfs partitions after a uevent burst
+
+A removable disk's add event can arrive before its partition nodes, and a
+partition event that arrives first cannot resolve a block device while the
+parent's primary device is still empty. TWRP's wildcard discovery then never
+creates the child partition, leaving USB-OTG missing from the mount list.
+
+Reconcile removable sysfs parents once each uevent burst is drained. This
+also picks up partitions whose add event was lost, and removes stale
+children after unplug.
+
+Signed-off-by: Rama Bondan Prakoso <ramanarubp@gmail.com>
+---
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+index b7c7e4b..9e49ca6 100755
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -3323,6 +3323,11 @@ void TWPartitionManager::ReadUevent(bool force_resync) {
+     uevent_overrun_ = false;
+     uevent_dirty_batches_ = 0;
+     ResyncUeventDevices();
++  } else if (drained) {
++    // A disk add can race its partition node, and a partition event that
++    // arrives before the disk event has no block device to resolve yet.
++    // Reconcile removable sysfs parents once the burst is drained.
++    ResyncUeventDevices();
+   }
+ }
+ 
