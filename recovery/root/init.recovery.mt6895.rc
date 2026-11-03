@@ -85,3 +85,11 @@ on property:twrp.storage.ready=1 && property:ro.vendor.trustonic.ready=true
 
 on property:servicemanager.ready=true
     setprop sys.boot_completed 1
+
+# The AWINIC RichTap driver defers loading haptic_ram.bin by 8 seconds
+# (ram_work_init queues its work for 2000 jiffies). The TWRP UI is
+# interactive before then, and the driver rejects those first activations
+# with "ram init failed, not allow to play!". Trigger the firmware load as
+# soon as boot completes so the vibrator is ready before the first touch.
+on property:sys.boot_completed=1
+    write /sys/class/leds/vibrator_single/ram_update 1
