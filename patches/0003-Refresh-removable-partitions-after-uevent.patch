@@ -1,24 +1,102 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Rama Bondan Prakoso <ramanarubp@gmail.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0700
-Subject: [PATCH] Refresh removable sysfs partitions after a uevent burst
+Subject: [PATCH] Refresh removable sysfs partitions after uevents and node creation
 
 A removable disk's add event can arrive before its partition nodes, and a
 partition event that arrives first cannot resolve a block device while the
-parent's primary device is still empty. TWRP's wildcard discovery then never
-creates the child partition, leaving USB-OTG missing from the mount list.
+parent's primary device is still empty. Reconcile removable sysfs parents
+once each uevent burst is drained to discover the child partitions.
 
-Reconcile removable sysfs parents once each uevent burst is drained. This
-also picks up partitions whose add event was lost, and removes stale
-children after unplug.
+Even the final event in a burst can beat ueventd's creation of /dev/block
+nodes. A single immediate resync then misses the new partition and nothing
+retries until an unrelated event, such as a later battery update.
+
+Report block add/change and socket-loss events to the background worker.
+Retry discovery on eight existing 250 ms snapshot ticks, publishing each
+reconciled list immediately afterward. This bounds retries to about two
+seconds without sleeping on the GUI thread, speeding up idle polling, or
+continuously rescanning sysfs when no hotplug work is pending. Keep the
+immediate burst resync and existing overflow and unplug handling.
 
 Signed-off-by: Rama Bondan Prakoso <ramanarubp@gmail.com>
 ---
+diff --git a/gui2/backend/twrp_background_backend.cpp b/gui2/backend/twrp_background_backend.cpp
+index 53137ac..0764fc0 100644
+--- a/gui2/backend/twrp_background_backend.cpp
++++ b/gui2/backend/twrp_background_backend.cpp
+@@ -159,10 +159,18 @@ void twrp_background_backend::stop() {
+
+ void twrp_background_backend::uevent_loop() {
+   auto next_snapshot = std::chrono::steady_clock::now();
++  unsigned pending_resyncs = 0;
+   bool listen_uevent = true;
+   while (!uevent_stop_.load()) {
+     const auto now = std::chrono::steady_clock::now();
+     if (now >= next_snapshot) {
++      // The netlink burst can finish before ueventd creates /dev/block nodes.
++      // Retry on eight snapshot ticks (~2 s), without waiting for another event
++      // or continuously scanning sysfs while no hotplug work is pending.
++      if (pending_resyncs != 0) {
++        PartitionManager.ResyncUeventDevices();
++        --pending_resyncs;
++      }
+       PartitionManager.RefreshPartitionListSnapshots();
+       next_snapshot = now + std::chrono::milliseconds(250);
+     }
+@@ -183,8 +191,10 @@ void twrp_background_backend::uevent_loop() {
+     }
+     if (ready == 0) continue;
+     // Drain POLLERR too, so ReadUevent can detect overflow and resync.
+-    if (uevent.revents & (POLLIN | POLLERR | POLLHUP))
+-      PartitionManager.ReadUevent((uevent.revents & POLLERR) != 0);
++    if (uevent.revents & (POLLIN | POLLERR | POLLHUP)) {
++      if (PartitionManager.ReadUevent((uevent.revents & POLLERR) != 0))
++        pending_resyncs = 8;
++    }
+     if (uevent.revents & (POLLNVAL | POLLHUP)) {
+       LOGINFO("uevent socket is not open, disabling hotplug polling\n");
+       listen_uevent = false;
 diff --git a/partitionmanager.cpp b/partitionmanager.cpp
-index b7c7e4b..9e49ca6 100755
+index b7c7e4b..10866db 100755
 --- a/partitionmanager.cpp
 +++ b/partitionmanager.cpp
-@@ -3323,6 +3323,11 @@ void TWPartitionManager::ReadUevent(bool force_resync) {
+@@ -3293,8 +3293,9 @@ void TWPartitionManager::ResyncUeventDevices() {
+   }
+ }
+
+-void TWPartitionManager::ReadUevent(bool force_resync) {
++bool TWPartitionManager::ReadUevent(bool force_resync) {
+   uevent_overrun_ |= force_resync;
++  bool retry = uevent_overrun_;
+   bool drained = false;
+   for (int count = 0; count < 64; ++count) {
+     char buf[4096];
+@@ -3302,6 +3303,7 @@ void TWPartitionManager::ReadUevent(bool force_resync) {
+     if (len < 0) {
+       if (errno == ENOBUFS) {
+         uevent_overrun_ = true;
++        retry = true;
+         continue;
+       }
+       drained = errno == EAGAIN || errno == EWOULDBLOCK;
+@@ -3311,11 +3313,14 @@ void TWPartitionManager::ReadUevent(bool force_resync) {
+     if (len == 0) { drained = true; break; }
+     if (len >= static_cast<decltype(len)>(sizeof(buf))) {
+       uevent_overrun_ = true;
++      retry = true;
+       continue;
+     }
+     const UeventBlockData data = GetEventBlockValues(buf, static_cast<int>(len));
+-    if (data.subsystem == "block" && (data.type == "disk" || data.type == "partition"))
++    if (data.subsystem == "block" && (data.type == "disk" || data.type == "partition")) {
++      retry |= data.action == "add" || data.action == "change";
+       HandleUevent(data);
++    }
+   }
+   // Coalesce overflow within a burst, but sustained input cannot postpone a
+   // correction forever: at most four bounded batches precede a resync.
+@@ -3323,7 +3328,13 @@ void TWPartitionManager::ReadUevent(bool force_resync) {
      uevent_overrun_ = false;
      uevent_dirty_batches_ = 0;
      ResyncUeventDevices();
@@ -28,5 +106,21 @@ index b7c7e4b..9e49ca6 100755
 +    // Reconcile removable sysfs parents once the burst is drained.
 +    ResyncUeventDevices();
    }
++  return retry;
  }
- 
+
+ void TWPartitionManager::CloseUevent() {
+diff --git a/partitions.hpp b/partitions.hpp
+index 3dd126f..faede22 100755
+--- a/partitions.hpp
++++ b/partitions.hpp
+@@ -886,7 +886,8 @@ public:
+   static UeventBlockData GetEventBlockValues(char* buf, int len);
+
+   // Drains hotplug events; GUI2 calls this from its storage worker.
+-  void ReadUevent(bool force_resync = false);
++  // Returns true if add/change or lost events need delayed device-node retries.
++  bool ReadUevent(bool force_resync = false);
+
+   // Reconciles removable devices with sysfs after dropped hotplug events.
+   void ResyncUeventDevices();
