@@ -160,8 +160,8 @@ tr_misc /tr_misc ext4 ro wait,slotselect,logical,first_stage_mount,nofail
 tr_system /tr_system erofs ro wait,slotselect,logical,first_stage_mount,nofail
 tr_system /tr_system ext4 ro wait,slotselect,logical,first_stage_mount,nofail
 
-tr_manifest /mnt/vendor/tr_manifest erofs ro wait,slotselect,logical,first_stage_mount
-tr_manifest /mnt/vendor/tr_manifest ext4 ro wait,slotselect,logical,first_stage_mount
+tr_manifest /mnt/vendor/tr_manifest erofs ro wait,slotselect,logical,first_stage_mount,nofail
+tr_manifest /mnt/vendor/tr_manifest ext4 ro wait,slotselect,logical,first_stage_mount,nofail
 
 /mnt/vendor/tr_manifest /tr_manifest none ro,bind wait,nofail
 
