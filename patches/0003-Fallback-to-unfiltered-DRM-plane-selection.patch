@@ -1,0 +1,108 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Rama Bondan Prakoso <ramanarubp@gmail.com>
+Date: Sun, 8 Nov 2026 06:20:00 +0000
+Subject: [PATCH] drm: fall back to unfiltered plane selection
+
+The minui rebase added strict primary-plane selection gated on
+possible_crtcs. On MT6895 the vendor DRM reports 0 of 2 required primary
+planes for CRTC 0, so Initdisplay fails and GUI2 exits 255 before it can
+draw, leaving a blank screen while adbd keeps running.
+
+Retry with the historical first-N plane selection when the strict pass
+cannot fill every layer mixer, preserving the strict path for devices
+whose kernel reports correct plane capabilities and CRTC masks.
+---
+diff --git a/twrpminui/graphics_drm.cpp b/twrpminui/graphics_drm.cpp
+index 5283b54..8169b3a 100644
+--- a/twrpminui/graphics_drm.cpp
++++ b/twrpminui/graphics_drm.cpp
+@@ -759,37 +759,64 @@ int MinuiBackendDrm::Initdisplay(DrmConnector index) {
+       drmModeGetPlaneResources(drm_fd), drmModeFreePlaneResources);
+   if (!options) return -1;
+   uint32_t selected = 0;
+-  // TWRP: signed reverse traversal avoids CLO's unsigned underflow on missing pipes.
+-  for (int i = static_cast<int>(options->count_planes) - 1; i >= 0 && selected < number_of_lms; --i) {
+-    Plane candidate{};
+-    candidate.plane = drmModeGetPlane(drm_fd, options->planes[i]);
+-    if (!candidate.plane) continue;
+-    if (!(candidate.plane->possible_crtcs & (1U << drm[index].crtc_index))) {
+-      drmModeFreePlane(candidate.plane);
+-      continue;
+-    } // TWRP: do not attach another connector's pipes.
+-    bool primary = false;
+-    if (load_properties(candidate.plane->plane_id, DRM_MODE_OBJECT_PLANE, &candidate)) {
+-      for (uint32_t j = 0; j < candidate.props->count_props; ++j) {
+-        if (!strcmp(candidate.props_info[j]->name, "capabilities"))
+-          primary = is_primary_plane(drm_fd, candidate.props->prop_values[j]);
++  const auto release_plane = [](Plane& plane) {
++    if (plane.props_info) {
++      for (uint32_t j = 0; plane.props && j < plane.props->count_props; ++j) {
++        if (plane.props_info[j]) drmModeFreeProperty(plane.props_info[j]);
+       }
++      free(plane.props_info);
+     }
+-    if (primary) {
+-      plane_res[selected++] = candidate;
+-    } else {
+-      if (candidate.props_info) {
+-        for (uint32_t j = 0; j < candidate.props->count_props; ++j)
+-          drmModeFreeProperty(candidate.props_info[j]);
+-        free(candidate.props_info);
++    if (plane.props) drmModeFreeObjectProperties(plane.props);
++    if (plane.plane) drmModeFreePlane(plane.plane);
++    plane = Plane{};
++  };
++  const auto select_planes = [&](bool reverse, bool require_crtc, bool require_primary) {
++    for (uint32_t i = 0; i < selected; ++i) release_plane(plane_res[i]);
++    selected = 0;
++    const int step = reverse ? -1 : 1;
++    const int first = reverse ? static_cast<int>(options->count_planes) - 1 : 0;
++    const int last = reverse ? -1 : static_cast<int>(options->count_planes);
++    for (int i = first; i != last && selected < number_of_lms; i += step) {
++      Plane candidate{};
++      candidate.plane = drmModeGetPlane(drm_fd, options->planes[i]);
++      if (!candidate.plane) continue;
++      if (require_crtc &&
++          !(candidate.plane->possible_crtcs & (1U << drm[index].crtc_index))) {
++        release_plane(candidate);
++        continue;
++      } // TWRP: do not attach another connector's pipes when the kernel reports them.
++      if (!load_properties(candidate.plane->plane_id, DRM_MODE_OBJECT_PLANE, &candidate)) {
++        release_plane(candidate);
++        continue;
++      }
++      bool primary = !require_primary;
++      if (require_primary) {
++        for (uint32_t j = 0; j < candidate.props->count_props; ++j) {
++          if (!strcmp(candidate.props_info[j]->name, "capabilities"))
++            primary = is_primary_plane(drm_fd, candidate.props->prop_values[j]);
++        }
++      }
++      if (primary) {
++        plane_res[selected++] = candidate;
++      } else {
++        release_plane(candidate);
+       }
+-      if (candidate.props) drmModeFreeObjectProperties(candidate.props);
+-      drmModeFreePlane(candidate.plane);
+     }
++    return selected;
++  };
++  // Some vendor DRM drivers do not expose usable primary-plane capabilities or
++  // possible_crtcs masks. Fall back to the historical first-N plane selection
++  // before failing the whole display, as TWRP did before the minui rebase.
++  if (select_planes(true, true, true) != number_of_lms) {
++    fprintf(stderr,
++            "TWRP DRM: display %d found %u/%u primary planes for CRTC index %d, "
++            "falling back to unfiltered plane selection\n",
++            index, selected, number_of_lms, drm[index].crtc_index);
++    select_planes(false, false, false);
+   }
+   if (selected != number_of_lms) {
+-    fprintf(stderr, "TWRP DRM: display %d found %u/%u primary planes for CRTC index %d\n",
+-            index, selected, number_of_lms, drm[index].crtc_index);
++    fprintf(stderr, "TWRP DRM: display %d selected %u/%u planes\n", index, selected,
++            number_of_lms);
+     return -1;
+   }
+   // TWRP: missing optional SPR property must not disable the whole backend (9388d9af).
