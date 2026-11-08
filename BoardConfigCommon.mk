@@ -104,6 +104,10 @@ TARGET_USERIMAGES_USE_F2FS := true
 # Crypto
 TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
+# Metadata encryption mounts /data through /dev/block/mapper/userdata. The
+# dmctl binary (and the cleanup in TWPartition::WipeEncryption) is required to
+# delete that mapping before make_f2fs can reformat the underlying partition.
+TW_USE_DMCTL := true
 TW_USE_FSCRYPT_POLICY := 2
 TW_FORCE_KEYMASTER_VER := true
 
